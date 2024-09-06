@@ -10,12 +10,16 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.example.notisys.dto.Keywords;
+import com.example.notisys.dto.News;
 import com.example.notisys.service.Scraping;
 import com.example.notisys.task.AsyncScrapingTask;
 import com.example.notisys.utils.NotificationUtil;
+import com.example.notisys.worker.NaverNewsWorker;
 import com.example.notisys.worker.ScrapingWorker;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.navigation.NavigationView;
@@ -35,6 +39,8 @@ import androidx.work.WorkManager;
 
 import com.example.notisys.databinding.ActivityMainBinding;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -116,7 +122,54 @@ public class MainActivity extends AppCompatActivity {
         // scheduledRun();
 
         // 주기적으로 조회
-        handlerRun();
+        //handlerRun();
+
+        Button button = findViewById(R.id.button4);
+
+        button.setOnClickListener(view -> {
+
+            List<News> list = null;
+            try {
+                list = NaverNewsWorker.Scraping("LSD", "shm", "101", "", "", 5);
+            } catch (Exception e) {
+                Log.e( "pjs", "NaverNewsWorker.Scraping 오류");
+                Log.e("pjs", e.getMessage());
+
+                throw new RuntimeException(e);
+            }
+
+            String[] keywords = Keywords.get();
+
+            Log.d( "pjs", "===> keyword check <===");
+
+            List<News> selectedList = new ArrayList<News>();
+            String pre_title = ""; // 중복 방지
+            for (News data : list) {
+
+                if (data.title.equals(pre_title))
+                    continue;
+
+                pre_title = data.title;
+
+
+                for (String keyword : keywords) {
+
+                    if (data.getTitle().contains(keyword)) {
+
+                        if (selectedList.stream().filter(x -> x.getTitle().equals(data.getTitle())).count() > 0) {
+                            selectedList.stream().filter(x -> x.getTitle().equals(data.getTitle())).forEach(x -> x.setKeyword(x.getKeyword() + ", " + keyword));
+                        } else {
+                            data.setKeyword(keyword);
+                            selectedList.add(data);
+                        }
+                    }
+                }
+            }
+
+            for (News data : selectedList) {
+                Log.d("pjs", data.toString());
+            }
+        });
     }
 
     NotificationCompat.Builder builder;
